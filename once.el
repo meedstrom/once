@@ -26,8 +26,8 @@
 
 ;; This library provides two main functions with variants:
 
-;; - `once-hook' `once-hook*' `once-hook!'
-;; - `once-load' `once-load*' `once-load!'
+;; - `once-hook'  `once-hook*'  `once-hook!'
+;; - `once-load'  `once-load*'  `once-load!'
 
 ;; The main functions are like `add-hook' and `eval-after-load' respectively,
 ;; except that they only call the provided function once: at the next time the
@@ -43,12 +43,6 @@
 
 ;;;; Examples:
 
-;; Configure appearance after the daemon makes its first emacsclient frame:
-
-;;     (once-hook! server-after-make-frame-hook
-;;       (set-face-font 'default (font-spec :family "Iosevka Nerd Font" :size 29))
-;;       (add-hook 'prog-mode-hook #'prism-mode))
-
 ;; Unset some default keys in geiser-repl, when that file first loads:
 
 ;;     (once-load! geiser-repl
@@ -56,8 +50,13 @@
 ;;       (keymap-unset geiser-repl-mode-map "M-." t)
 ;;       (keymap-unset geiser-repl-mode-map "M-`" t))
 
+;; Configure font after the daemon makes its first emacsclient frame:
+
+;;     (once-hook! server-after-make-frame-hook
+;;       (set-face-font 'default (font-spec :family "Iosevka Nerd Font" :size 29)))
+
 ;; By the way, setting hooks in init-files is a natural fit for the ## macro
-;; from Llama.  No problems combining it with this library:
+;; from Llama.  No problems combining that with this library:
 
 ;;     (once-load 'org (##setopt org-todo-keywords '((sequence "IDEA" "DONE"))))
 
@@ -85,7 +84,7 @@
 
 (defun once--make-idempotent-name (&rest args)
   "Return a string that is unique for ARGS, and the same every time.
-ARGS may be any readable Lisp objects, but if they are symbols, the
+ARGS may be any Lisp objects, but if they are symbols, the
 symbol name is used."
   (with-memoization (gethash args once--cache)
     (concat "once--"
@@ -152,11 +151,12 @@ The difference from `eval-after-load' is that loading FEATURE again will
 not call FUNCTION again.
 In other words, loading FEATURE ten times calls FUNCTION once.
 
-This may be useful since there is no easy way to undo `eval-after-load',
-in the way that `remove-hook' can undo `add-hook'.
+This may be useful as a default method since there is no easy way to
+undo `eval-after-load', in the way that `remove-hook' can undo
+`add-hook'.
 
 If calling FUNCTION again is desired - which can happen when designing
-`user-init-file' to handle re-loads - you must invoke `once-load' again,
+`user-init-file' to handle re-load - you must invoke `once-load' again,
 bearing in mind that the most likely result is calling FUNCTION
 immediately, due to FEATURE being previously loaded.
 
@@ -168,16 +168,12 @@ In this way, it is identical to `eval-after-load'."
     (let ((wrapper (intern (once--make-idempotent-name feature function))))
       (defalias wrapper
         (lambda ()
-          ;; It seems `eval-after-load' will put `wrapper' inside
-          ;; an anonymous lambda.  This would've been too easy:
-          ;;     (delq wrapper (assq feature after-load-alist))
-          ;;     (fmakunbound wrapper)
-          ;; ...but we can turn `wrapper' into a no-op.
           (fset wrapper #'ignore)
           (funcall function)))
       (eval-after-load feature wrapper)
       wrapper)))
 
+;; FIXME: prolly use a different word than idempotent
 (defun once-load* (feature function)
   "Non-idempotent version of `once-load'.
 
