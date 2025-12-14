@@ -1,0 +1,74 @@
+* once.el
+This library provides two main functions:
+
+- =once-hook=, substitute for =add-hook=
+- =once-load=, substitute for =eval-after-load=
+
+They are like =add-hook= and =eval-after-load= respectively, except that they only result in calling the provided function once: at the next time the hook is run or the file is loaded, respectively.
+
+The variants
+
+- =once-hook*=
+- =once-load*=
+
+can be explained if you think of the main functions as being called
+"pushnew-self-deleting-hook", and these just "push-self-deleting-hook".
+
+In other words, these variants are NOT idempotent; evaluating
+
+#+begin_src elisp
+(dotimes (_ 3)
+  (once-hook* 'minibuffer-setup-hook #'my-func))
+#+end_src
+
+results in calling =my-func= three times at the next minibuffer setup.
+
+The macros
+
+- =once-hook!=
+- =once-load!=
+
+are meant to help with writing Emacs init-files.  See examples next section.
+
+** Examples
+
+Unset some default keys in =geiser-repl-mode-map=, when the file =geiser-repl.el= first loads:
+
+    #+begin_src elisp
+    (once-load! geiser-repl
+      (keymap-unset geiser-repl-mode-map "M-," t)
+      (keymap-unset geiser-repl-mode-map "M-." t)
+      (keymap-unset geiser-repl-mode-map "M-`" t))
+    #+end_src
+
+Configure font after the Emacs daemon makes its first emacsclient frame:
+
+    #+begin_src elisp
+    (once-hook! server-after-make-frame-hook
+      (set-face-font 'default (font-spec :family "Iosevka Nerd Font" :size 29)))
+    #+end_src
+
+By the way, setting hooks in init-files is a natural fit for the =##= macro
+from [[https://github.com/tarsius/llama][Llama]].  No problems combining that with this library:
+
+    #+begin_src elisp
+    (once-load 'org (##setopt org-todo-keywords '((sequence "IDEA" "DONE"))))
+    #+end_src
+
+Setting up a =my-first-frame-hook=:
+
+    #+begin_src elisp
+    (if (daemonp)
+        (once-hook 'server-after-make-frame-hook (##run-hooks 'my-first-frame-hook))
+      (add-hook 'window-setup-hook (##run-hooks 'my-first-frame-hook)))
+    #+end_src
+
+The advantage of =once-hook= plus Llama, compared to =once-hook!=, is that
+the former preserves the exact calling convention of =add-hook=.
+That makes it trivial to rewrite from =add-hook= to =once-hook= and back.
+Note the identical arguments:
+
+    #+begin_src elisp
+    (add-hook  'enable-theme-functions (##message "Loaded theme %s" %) -50)
+    (once-hook 'enable-theme-functions (##message "Loaded theme %s" %) -50)
+    #+end_src

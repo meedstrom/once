@@ -18,20 +18,28 @@
 ;; Author:   Martin Edström <meedstrom91@gmail.com>
 ;; URL:      https://github.com/meedstrom/once
 ;; Created:  2025-12-12
-;; Keywords: tools
+;; Keywords: lisp
 ;; Package-Requires: ((emacs "29.1"))
 
 
 ;;; Commentary:
 
-;; This library provides two main functions with variants:
+;; This library provides two main functions:
 
-;; - `once-hook'  `once-hook*'  `once-hook!'
-;; - `once-load'  `once-load*'  `once-load!'
+;; - `once-hook', substitute for `add-hook'
+;; - `once-load', substitute for `eval-after-load'
 
-;; The main functions are like `add-hook' and `eval-after-load' respectively,
-;; except that they only call the provided function once: at the next time the
-;; hook is run or the file is loaded, respectively.
+;; They are like `add-hook' and `eval-after-load' respectively,
+;; except that they only result in calling the provided function once: at the
+;; next time the hook is run or the file is loaded, respectively.
+
+;; The variants
+
+;; - `once-hook*'
+;; - `once-load*'
+
+;; can be explained if you think of the main functions as being called
+;; "pushnew-self-deleting-hook", and these just "push-self-deleting-hook".
 
 ;; The macros
 
@@ -80,23 +88,24 @@
 (require 'cl-lib)
 
 (defvar once--counter 0)
-(defvar once--cache (make-hash-table :test 'equal))
+(defvar once-functions nil
+  "List of function symbols defined by `once-load', `once-hook' etc.")
 
-(defun once--make-idempotent-name (&rest args)
-  "Return a string that is unique for ARGS, and the same every time.
-ARGS may be any Lisp objects, but if they are symbols, the
-symbol name is used."
-  (with-memoization (gethash args once--cache)
-    (concat "once--"
-            (mapconcat (lambda (arg)
-                         (if (symbolp arg)
-                             (symbol-name arg)
-                           (number-to-string (abs (sxhash arg)))))
-                       args
-                       "--"))))
+(defun once--make-deterministic-name (&rest args)
+  "Return a string that is unique for Lisp objects ARGS.
+Caveats may apply as in `sxhash'.
+If ARGS are symbols, do not rely on this producing a different name for
+the same symbol in a different obarray."
+  (concat "once---"
+          (mapconcat (lambda (arg)
+                       (if (symbolp arg)
+                           (symbol-name arg)
+                         (number-to-string (sxhash arg))))
+                     args
+                     ".")))
 
 
-;;;; Add-hook substitutes
+;;;; Substitutes for add-hook
 
 (defun once-hook (hook function &optional depth local)
   "Like `add-hook' but call FUNCTION on next run of HOOK only.
@@ -107,21 +116,23 @@ member of HOOK, even if DEPTH would differ.
 
 For alternative behavior, use `once-hook*'.  That may be a good idea
 when writing Lisp for distribution, as it is simpler to reason about."
-  ;; Check manually b/c `function' is not `wrapper'
+  ;; Check manually b/c input `function' is not the `wrapper' we make
   (unless (if local
               (and (boundp hook) (member function (symbol-value hook)))
             (and (default-boundp hook) (member function (default-value hook))))
-    (let ((wrapper (intern (once--make-idempotent-name hook function local))))
+    (let ((wrapper (intern (once--make-deterministic-name hook function local))))
       (unless (fboundp wrapper)
         (defalias wrapper
           (lambda (&rest args)
             (remove-hook hook wrapper local)
             (apply function args))))
       (add-hook hook wrapper depth local)
+      (cl-pushnew wrapper once-functions)
       wrapper)))
 
 (defun once-hook* (hook function &optional depth local)
   "Non-idempotent version of `once-hook'.
+Think of it as `push', if `once-hook' is like `cl-pushnew'.
 
 Repeated invocations will stack up multiple calls of FUNCTION on the
 next run of HOOK.  This is because FUNCTION is wrapped in a new lambda
@@ -130,52 +141,52 @@ each time."
     (fset wrapper
           (lambda (&rest args)
             (remove-hook hook wrapper local)
+            (setq once-functions (delq wrapper once-functions))
             (fmakunbound wrapper)
             (apply function args)))
     (add-hook hook wrapper depth local)
+    (push wrapper once-functions)
     wrapper))
 
 
-;;;; Eval-after-load substitutes
+;;;; Substitutes for eval-after-load
 
 (defun once-load (feature function)
   "Call FUNCTION on next load of FEATURE, or now if already loaded.
 
 Like `eval-after-load', the effect is idempotent in that loading FEATURE
 once will not call a given FUNCTION more than once, even if `once-load'
-was invoked multiple times before load.
+was invoked multiple times before load with the same arguments.
 
 \(For alternative behavior there, see `once-load*'.\)
 
 The difference from `eval-after-load' is that loading FEATURE again will
-not call FUNCTION again.
+not cause FUNCTION to be called again.
 In other words, loading FEATURE ten times calls FUNCTION once.
 
-This may be useful as a default method since there is no easy way to
-undo `eval-after-load', in the way that `remove-hook' can undo
-`add-hook'.
+If FEATURE is already loaded, this simply calls FUNCTION and, unlike
+`eval-after-load', does not also add it to `after-load-alist'.
 
-If calling FUNCTION again is desired - which can happen when designing
-`user-init-file' to handle re-load - you must invoke `once-load' again,
-bearing in mind that the most likely result is calling FUNCTION
-immediately, due to FEATURE being previously loaded.
+In other words, invoking `once-load' once can only result in at most one
+call of FUNCTION.
 
-In other words, invoking `once-load' ten times calls FUNCTION ten times,
-if this happens after FEATURE has loaded.
-In this way, it is identical to `eval-after-load'."
+This may be sensible as a standard substitute for `eval-after-load',
+since there is no easy way to undo `eval-after-load' similar to how
+`remove-hook' can undo `add-hook'."
   (if (featurep feature)
       (funcall function)
-    (let ((wrapper (intern (once--make-idempotent-name feature function))))
+    (let ((wrapper (intern (once--make-deterministic-name feature function))))
       (defalias wrapper
         (lambda ()
           (fset wrapper #'ignore)
           (funcall function)))
       (eval-after-load feature wrapper)
+      (cl-pushnew wrapper once-functions)
       wrapper)))
 
-;; FIXME: prolly use a different word than idempotent
 (defun once-load* (feature function)
   "Non-idempotent version of `once-load'.
+Think of it as `push', if `once-load' is like `cl-pushnew'.
 
 Repeated invocations will stack up multiple calls of FUNCTION on the
 next load of FEATURE.  This is because FUNCTION is wrapped in a new
@@ -188,22 +199,29 @@ lambda each time."
               (fset wrapper #'ignore)
               (funcall function)))
       (eval-after-load feature wrapper)
+      (push wrapper once-functions)
       wrapper)))
 
 
 ;;;; Macros
 
 (defmacro once-hook! (hook &rest body)
-  "Eval BODY on next run of HOOK."
+  "Eval BODY on next run of HOOK.
+
+Returns the function that wraps BODY, a function symbol that can be
+passed to `remove-hook'.  It happens automatically when HOOK runs, so
+this is just useful before HOOK has run.
+The function is also listed in `once-functions'."
   (declare (indent 1) (debug t))
   `(once-hook ',hook (lambda () ,@body)))
 
 (defmacro once-load! (feature &rest body)
   "Like `with-eval-after-load' but do not re-eval on re-load.
-Eval BODY on next load of FEATURE, or now if already loaded.
 
 Returns the function that wraps BODY, a function symbol that can be
-`fset' to `ignore' \(this happens automatically on next FEATURE load\)."
+`fset' to `ignore'.  It happens automatically on FEATURE load, so
+this is just useful before FEATURE has loaded.
+The function is also listed in `once-functions'."
   (declare (indent 1) (debug t))
   `(once-load ',feature (lambda () ,@body)))
 
