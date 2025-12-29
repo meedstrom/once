@@ -130,7 +130,8 @@ when writing Lisp for distribution, as it is simpler to reason about."
         (defalias wrapper
           (lambda (&rest args)
             (remove-hook hook wrapper local)
-            (apply function args))))
+            (apply function args))
+          (format "Thin wrapper around %s" (readablep function))))
       (add-hook hook wrapper depth local)
       (cl-pushnew wrapper once-functions)
       wrapper)))
