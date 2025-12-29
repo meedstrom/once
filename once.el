@@ -181,10 +181,10 @@ since there is no easy way to undo `eval-after-load' similar to how
   (if (featurep feature)
       (funcall function)
     (let ((wrapper (intern (once--make-deterministic-name feature function))))
-      (defalias wrapper
-        (lambda ()
-          (fset wrapper #'ignore)
-          (funcall function)))
+      (fset wrapper
+            (lambda ()
+              (fset wrapper #'ignore)
+              (funcall function)))
       (eval-after-load feature wrapper)
       (cl-pushnew wrapper once-functions)
       wrapper)))
