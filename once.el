@@ -89,13 +89,18 @@
 
 (defvar once--counter 0)
 (defvar once-functions nil
-  "List of function symbols defined by `once-load', `once-hook' etc.")
+  "List of function symbols defined by `once-load', `once-hook' etc.
+
+These functions are thin wrappers that delete themselves from the
+corresponding hook after it runs, or that `fset' themselves to `ignore'
+after the corresponding feature has loaded.")
 
 (defun once--make-deterministic-name (&rest args)
   "Return a string that is unique for Lisp objects ARGS.
-Caveats may apply as in `sxhash'.
-If ARGS are symbols, do not rely on this producing a different name for
-the same symbol in a different obarray."
+
+As with `sxhash', it is deterministic only for the current session.
+If any of ARGS is a symbol, its symbol name is used, which may not
+be unique enough for your purposes if `obarray' is overridden."
   (concat "once---"
           (mapconcat (lambda (arg)
                        (if (symbolp arg)
@@ -206,22 +211,13 @@ lambda each time."
 ;;;; Macros
 
 (defmacro once-hook! (hook &rest body)
-  "Eval BODY on next run of HOOK.
-
-Returns the function that wraps BODY, a function symbol that can be
-passed to `remove-hook'.  It happens automatically when HOOK runs, so
-this is just useful before HOOK has run.
-The function is also listed in `once-functions'."
+  "Eval BODY on next run of HOOK."
   (declare (indent 1) (debug t))
   `(once-hook ',hook (lambda () ,@body)))
 
 (defmacro once-load! (feature &rest body)
   "Like `with-eval-after-load' but do not re-eval on re-load.
-
-Returns the function that wraps BODY, a function symbol that can be
-`fset' to `ignore'.  It happens automatically on FEATURE load, so
-this is just useful before FEATURE has loaded.
-The function is also listed in `once-functions'."
+Eval BODY on next load of FEATURE, or eval now if already loaded."
   (declare (indent 1) (debug t))
   `(once-load ',feature (lambda () ,@body)))
 
