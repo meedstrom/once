@@ -48,8 +48,10 @@ Configure font after the Emacs daemon makes its first emacsclient frame:
       (set-face-font 'default (font-spec :family "Iosevka Nerd Font" :size 29)))
     #+end_src
 
-By the way, setting hooks in init-files is a natural fit for the =##= macro
-from [[https://github.com/tarsius/llama][Llama]].  No problems combining that with this library:
+** Examples with Llama
+
+Setting hooks in init-files is a natural fit for the =##= macro from [[https://github.com/tarsius/llama][Llama]].
+No problems combining that with this library:
 
     #+begin_src elisp
     (once-load 'org (##setopt org-todo-keywords '((sequence "IDEA" "DONE"))))
@@ -58,6 +60,7 @@ from [[https://github.com/tarsius/llama][Llama]].  No problems combining that wi
 Setting up a =my-first-frame-hook=:
 
     #+begin_src elisp
+    (defvar my-first-frame-hook nil)
     (if (daemonp)
         (once-hook 'server-after-make-frame-hook (##run-hooks 'my-first-frame-hook))
       (add-hook 'window-setup-hook (##run-hooks 'my-first-frame-hook)))
