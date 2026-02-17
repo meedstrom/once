@@ -1,4 +1,6 @@
-* once.el
+#+html: <a href="https://melpa.org/#/once"><img alt="MELPA" src="https://melpa.org/packages/once-badge.svg"/></a> <a href="https://stable.melpa.org/#/once"><img alt="MELPA Stable" src="https://stable.melpa.org/packages/once-badge.svg"/></a>
+* once
+
 This library provides two main functions:
 
 - =once-hook=, substitute for =add-hook=
@@ -69,7 +71,7 @@ Setting up a =my-first-frame-hook=, inspired by Doom Emacs's various doom-first-
 The advantage of =once-hook= plus Llama, compared to =once-hook!=, is that
 the former preserves the exact calling convention of =add-hook=.
 That makes it trivial to rewrite from =add-hook= to =once-hook= and back.
-Note the identical arguments:
+No need to change any arguments nor quotations:
 
     #+begin_src elisp
     (add-hook  'enable-theme-functions (##message "Loaded theme %s" %) -50)
