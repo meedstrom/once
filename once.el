@@ -19,7 +19,7 @@
 ;; URL:      https://github.com/meedstrom/once
 ;; Created:  2025-12-12
 ;; Keywords: lisp
-;; Package-Requires: ((emacs "29.1"))
+;; Package-Requires: ((emacs "26.1"))
 
 
 ;;; Commentary:
