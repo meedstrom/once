@@ -57,7 +57,7 @@ No problems combining that with this library:
     (once-load 'org (##setopt org-todo-keywords '((sequence "IDEA" "DONE"))))
     #+end_src
 
-Setting up a =my-first-frame-hook=:
+Setting up a =my-first-frame-hook=, inspired by Doom Emacs's various doom-first-*-hook:
 
     #+begin_src elisp
     (defvar my-first-frame-hook nil)
@@ -75,3 +75,16 @@ Note the identical arguments:
     (add-hook  'enable-theme-functions (##message "Loaded theme %s" %) -50)
     (once-hook 'enable-theme-functions (##message "Loaded theme %s" %) -50)
     #+end_src
+
+
+* Remarks
+
+1. I've found =once-hook= to be surprisingly useful in general-purpose Elisp code.
+
+   So this is not just for initfiles!
+
+2. It will almost never matter that =once-load= only calls a thing once, because a given Elisp file rarely loads twice anyway.  But it feels safer and easier to reason about, in my opinion: a given invocation cannot ever result in more than one call of the given function.
+
+   There are cases where you do want to load a file multiple times.  One such case is writing initfiles to be idempotent so that you can re-load them.
+
+   The effect of =once-load= can also be undone.  The effect of =eval-after-load= is permanent and hard to undo.
