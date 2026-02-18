@@ -19,7 +19,7 @@
 ;; URL:      https://github.com/meedstrom/once
 ;; Created:  2025-12-12
 ;; Keywords: lisp
-;; Package-Requires: ((emacs "26.1"))
+;; Package-Requires: ((emacs "26.1") (compat "30.1"))
 
 
 ;;; Commentary:
@@ -91,6 +91,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'compat)
 
 (defvar once--counter 0)
 (defvar once-functions nil
