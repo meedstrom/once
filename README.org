@@ -90,3 +90,30 @@ No need to change any arguments nor quotations:
    There are cases where you do want to load a file multiple times.  One such case is writing initfiles to be idempotent so that you can re-load them.  In that case, you'd like to be able to edit what goes in your `eval-after-load` expressions and avoid calling what you had put there earlier!
 
    The effect of =once-load= can also be undone.  The effect of =eval-after-load= is permanent and hard to undo.
+
+* Similar packages
+
+The unpublished https://github.com/emacs-magus/once looks like it will be much more general.
+
+I'm not opposed to letting that take over the name "once", eventually! https://github.com/emacs-magus/once/issues/9
+
+To avoid namespace conflict, you can early-adopt that and keep your =once-hook= / =once-load= forms mostly functional like this:
+
+#+BEGIN_SRC elisp
+(use-package once
+  :vc (:url "https://github.com/emacs-magus/once" :rev :newest)
+  :demand
+  :config
+  (defun once-hook (hook function &optional _depth _local)
+    "Unlike `add-hook', DEPTH and LOCAL ignored."
+    (once (list :hooks hook) function))
+
+  (defun once-load (feature function)
+    (once-after-load feature function))
+
+  (defmacro once-hook! (hook &rest body)
+    `(once (list :hooks ',hook) (lambda () ,@body)))
+
+  (defmacro once-load! (feature &rest body)
+    `(once-with ',feature ,@body)))
+#+END_SRC
