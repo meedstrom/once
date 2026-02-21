@@ -87,9 +87,9 @@ No need to change any arguments nor quotations:
 
 2. It will almost never matter that =once-load= only calls a thing once, because a given Elisp file rarely loads twice anyway.  But it feels safer and easier to reason about, in my opinion: a given invocation cannot ever result in more than one call of the given function.
 
-   There are cases where you do want to load a file multiple times.  One such case is writing initfiles to be idempotent so that you can re-load them.  In that case, you'd like to be able to edit what goes in your `eval-after-load` expressions and avoid calling what you had put there earlier!
+   There are cases where you do want to load a file multiple times.  One such case is writing initfiles to be idempotent so that you can re-load them.  In that case, you'd like to be able to edit what goes in your =eval-after-load= expressions and avoid calling what you had put there earlier!
 
-   The effect of =once-load= can also be undone.  The effect of =eval-after-load= is permanent and hard to undo.
+   There is no =remove-hook= equivalent for =eval-after-load=, and it is not easy to implement.  So the next best thing is to default to =once-load= everywhere.  Just in case.
 
 * Similar packages
 
