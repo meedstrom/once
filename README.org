@@ -112,8 +112,10 @@ To avoid namespace conflict, you can early-adopt that and keep your =once-hook= 
     (once-after-load feature function))
 
   (defmacro once-hook! (hook &rest body)
+    (declare (indent 1) (debug t))
     `(once (list :hooks ',hook) (lambda () ,@body)))
 
   (defmacro once-load! (feature &rest body)
+    (declare (indent 1) (debug t))
     `(once-with ',feature ,@body)))
 #+END_SRC
